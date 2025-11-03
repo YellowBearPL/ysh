@@ -1,9 +1,20 @@
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
+
+int isBuiltin(const char *cmd)
+{
+    const char *builtins[] = {"exit", "echo", "type", NULL};
+    for (int i = 0; builtins[i] != NULL; i++)
+    {
+        if (strcmp(cmd, builtins[i]) == 0)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
 
 int main(void)
 {
@@ -59,21 +70,27 @@ int main(void)
             continue;
         }
 
-        pid_t pid = fork();
-        if (pid == 0)
+        if (strcmp(args[0], "type") == 0)
         {
-            execvp(args[0], args);
-            perror("command not found");
-            exit(1);
+            if (args[1] == NULL)
+            {
+                fprintf(stderr, "type: missing argument\n");
+                continue;
+            }
+
+            if (isBuiltin(args[1]))
+            {
+                printf("%s is a shell builtin\n", args[1]);
+            }
+            else
+            {
+                printf("%s: not found\n", args[1]);
+            }
+
+            continue;
         }
-        else if (pid > 0)
-        {
-            wait(NULL);
-        }
-        else
-        {
-            perror("fork failed");
-        }
+
+        printf("%s: not found\n", args[0]);
     }
 
     return 0;
