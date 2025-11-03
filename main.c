@@ -32,8 +32,8 @@ char *findInPath(const char *cmd)
         return NULL;
     }
 
-    char *dir = strtok(pathCopy, ":");
     static char fullpath[1024];
+    char *dir = strtok(pathCopy, ":");
     while (dir != NULL)
     {
         snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, cmd);
@@ -132,11 +132,18 @@ int main(void)
             continue;
         }
 
+        char *path = findInPath(args[0]);
+        if (!path)
+        {
+            printf("%s: not found\n", args[0]);
+            continue;
+        }
+
         pid_t pid = fork();
         if (pid == 0)
         {
-            execvp(args[0], args);
-            perror("command not found");
+            execvp(path, args);
+            perror("exec failed");
             exit(1);
         }
         else if (pid > 0)
