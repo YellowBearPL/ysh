@@ -20,11 +20,6 @@ int main(void)
         }
 
         command[strcspn(command, "\n")] = '\0';
-        if (strcmp(command, "exit") == 0)
-        {
-            break;
-        }
-
         int i = 0;
         args[i] = strtok(command, " ");
         while (args[i] != NULL && i < 63)
@@ -36,6 +31,17 @@ int main(void)
         if (args[0] == NULL)
         {
             continue;
+        }
+
+        if (strcmp(args[0], "exit") == 0)
+        {
+            int status = 0;
+            if (args[1])
+            {
+                status = (int)strtol(args[1], NULL, 0);
+            }
+
+            exit(status);
         }
 
         pid_t pid = fork();
