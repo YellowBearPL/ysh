@@ -44,6 +44,21 @@ int main(void)
             exit(status);
         }
 
+        if (strcmp(args[0], "echo") == 0)
+        {
+            for (int j = 1; args[j] != NULL; j++)
+            {
+                printf("%s", args[j]);
+                if (args[j + 1] != NULL)
+                {
+                    printf(" ");
+                }
+            }
+
+            printf("\n");
+            continue;
+        }
+
         pid_t pid = fork();
         if (pid == 0)
         {
