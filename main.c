@@ -54,13 +54,14 @@ char *findInPath(const char *cmd)
     return NULL;
 }
 
-void parseCommand(const char *input, char *args[], char **outfile)
+void parseCommand(const char *input, char *args[], char **outFile, char **errFile)
 {
     int i = 0, j = 0;
     int inSingle = 0, inDouble = 0;
     char *arg = malloc(MAX_CMD_LEN);
     int argPos = 0;
-    *outfile = NULL;
+    *outFile = NULL;
+    *errFile = NULL;
     while (input[i] != '\0')
     {
         char c = input[i];
@@ -133,7 +134,47 @@ void parseCommand(const char *input, char *args[], char **outfile)
             }
 
             filename[k] = '\0';
-            *outfile = strdup(filename);
+            *outFile = strdup(filename);
+            continue;
+        }
+        else if (!inSingle && !inDouble && c == '>')
+        {
+            if (argPos > 0)
+            {
+                arg[argPos] = '\0';
+                args[j++] = strdup(arg);
+                argPos = 0;
+            }
+
+            int isErr = strcmp(args[j - 1], "2") == 0;
+            if (j > 0 && (strcmp(args[j - 1], "1") == 0 || isErr))
+            {
+                j--;
+            }
+
+            i++;
+            while (input[i] == ' ' || input[i] == '\t')
+            {
+                i++;
+            }
+
+            char filename[MAX_CMD_LEN];
+            int k = 0;
+            while (input[i] != '\0' && input[i] != ' ' && input[i] != '\t')
+            {
+                filename[k++] = input[i++];
+            }
+
+            filename[k] = '\0';
+            if (isErr)
+            {
+                *errFile = strdup(filename);
+            }
+            else
+            {
+                *outFile = strdup(filename);
+            }
+
             continue;
         }
         else
@@ -158,7 +199,7 @@ int main(void)
 {
     char command[MAX_CMD_LEN];
     char *args[MAX_ARGS];
-    char *outfile;
+    char *outFile, *errFile;
     while (1)
     {
         printf("¥ ");
@@ -172,7 +213,7 @@ int main(void)
         command[strcspn(command, "\n")] = '\0';
         int i = 0;
         args[i] = NULL;
-        parseCommand(command, args, &outfile);
+        parseCommand(command, args, &outFile, &errFile);
         if (args[0] == NULL)
         {
             continue;
@@ -193,11 +234,11 @@ int main(void)
         {
             int savedStdout = -1;
             int fd;
-            if (outfile) {
-                fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (outFile) {
+                fd = open(outFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
                 if (fd == -1)
                 {
-                    perror(outfile);
+                    perror(outFile);
                     continue;
                 }
 
@@ -216,13 +257,13 @@ int main(void)
             }
 
             printf("\n");
-            if (outfile)
+            if (outFile)
             {
                 fflush(stdout);
                 dup2(savedStdout, STDOUT_FILENO);
                 close(savedStdout);
-                free(outfile);
-                outfile = NULL;
+                free(outFile);
+                outFile = NULL;
             }
 
             continue;
@@ -315,17 +356,30 @@ int main(void)
         pid_t pid = fork();
         if (pid == 0)
         {
-            if (outfile)
+            if (outFile)
             {
-                int fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                if (fd == -1)
+                int fdOut = open(outFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (fdOut == -1)
                 {
-                    perror(outfile);
+                    perror(outFile);
                     exit(1);
                 }
 
-                dup2(fd, STDOUT_FILENO);
-                close(fd);
+                dup2(fdOut, STDOUT_FILENO);
+                close(fdOut);
+            }
+
+            if (errFile)
+            {
+                int fdErr = open(errFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (fdErr == -1)
+                {
+                    perror(errFile);
+                    exit(1);
+                }
+
+                dup2(fdErr, STDERR_FILENO);
+                close(fdErr);
             }
 
             execvp(path, args);
@@ -335,9 +389,14 @@ int main(void)
         else if (pid > 0)
         {
             wait(NULL);
-            if (outfile)
+            if (outFile)
             {
-                free(outfile);
+                free(outFile);
+            }
+
+            if (errFile)
+            {
+                free(errFile);
             }
         }
         else
