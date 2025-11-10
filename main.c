@@ -7,10 +7,14 @@
 
 #define MAX_ARGS 64
 #define MAX_CMD_LEN 1024
+#define MAX_HISTORY 1000
+
+char *history[MAX_HISTORY];
+int historyCount = 0;
 
 int isBuiltin(const char *cmd)
 {
-    const char *builtins[] = {"exit", "echo", "type", "pwd", "cd", NULL};
+    const char *builtins[] = {"exit", "echo", "type", "pwd", "cd", "history", NULL};
     for (int i = 0; builtins[i] != NULL; i++)
     {
         if (strcmp(cmd, builtins[i]) == 0)
@@ -184,6 +188,28 @@ void parseCommand(const char *input, char *args[], char **outFile, int *outAppen
     free(arg);
 }
 
+void addToHistory(const char *command)
+{
+    if (historyCount < MAX_HISTORY)
+    {
+        history[historyCount++] = strdup(command);
+    }
+    else
+    {
+        free(history[0]);
+        memmove(history, history + 1, sizeof(char *) * (MAX_HISTORY - 1));
+        history[MAX_HISTORY - 1] = strdup(command);
+    }
+}
+
+void showHistory()
+{
+    for (int i = 0; i < historyCount; i++)
+    {
+        printf("%d %s\n", i + 1, history[i]);
+    }
+}
+
 int main(void)
 {
     char command[MAX_CMD_LEN];
@@ -204,6 +230,12 @@ int main(void)
         int i = 0;
         args[i] = NULL;
         parseCommand(command, args, &outFile, &outAppend, &errFile, &errAppend);
+        if (strlen(command) == 0)
+        {
+            continue;
+        }
+        addToHistory(command);
+
         if (args[0] == NULL)
         {
             continue;
@@ -218,6 +250,12 @@ int main(void)
             }
 
             exit(status);
+        }
+
+        if (strcmp(args[0], "history") == 0)
+        {
+            showHistory();
+            continue;
         }
 
         if (strcmp(args[0], "echo") == 0)
@@ -395,6 +433,11 @@ int main(void)
         {
             perror("fork failed");
         }
+    }
+
+    for (int i = 0; i < historyCount; i++)
+    {
+        free(history[i]);
     }
 
     return 0;
