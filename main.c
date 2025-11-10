@@ -202,9 +202,15 @@ void addToHistory(const char *cmd)
     }
 }
 
-void printHistory()
+void printHistory(int limit)
 {
-    for (int i = 0; i < historyCount; i++)
+    int start = 0;
+    if (limit > 0 && limit < historyCount)
+    {
+        start = historyCount - limit;
+    }
+
+    for (int i = start; i < historyCount; i++)
     {
         printf("%d %s\n", i + 1, history[i]);
     }
@@ -254,7 +260,13 @@ int main(void)
 
         if (strcmp(args[0], "history") == 0)
         {
-            printHistory();
+            int limit = 0;
+            if (args[1])
+            {
+                limit = (int)strtol(args[1], NULL, 0);
+            }
+
+            printHistory(limit);
             continue;
         }
 
