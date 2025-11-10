@@ -54,14 +54,14 @@ char *findInPath(const char *cmd)
     return NULL;
 }
 
-void parseCommand(const char *input, char *args[], char **outFile, char **errFile)
+void parseCommand(const char *input, char *args[], char **outFile, int *append)
 {
     int i = 0, j = 0;
     int inSingle = 0, inDouble = 0;
     char *arg = malloc(MAX_CMD_LEN);
     int argPos = 0;
     *outFile = NULL;
-    *errFile = NULL;
+    *append = 0;
     while (input[i] != '\0')
     {
         char c = input[i];
@@ -115,9 +115,20 @@ void parseCommand(const char *input, char *args[], char **outFile, char **errFil
                 argPos = 0;
             }
 
-            if (j > 0 && strcmp(args[j - 1], "1") == 0)
+            int isErr = strcmp(args[j - 1], "2") == 0;
+            if (j > 0 && (strcmp(args[j - 1], "1") == 0 || isErr))
             {
                 j--;
+            }
+
+            if (input[i + 1] == '>')
+            {
+                *append = 1;
+                i++;
+            }
+            else
+            {
+                *append = 0;
             }
 
             i++;
@@ -135,45 +146,6 @@ void parseCommand(const char *input, char *args[], char **outFile, char **errFil
 
             filename[k] = '\0';
             *outFile = strdup(filename);
-            continue;
-        }
-        else if (!inSingle && !inDouble && c == '>')
-        {
-            if (argPos > 0)
-            {
-                arg[argPos] = '\0';
-                args[j++] = strdup(arg);
-                argPos = 0;
-            }
-
-            int isErr = strcmp(args[j - 1], "2") == 0;
-            if (j > 0 && (strcmp(args[j - 1], "1") == 0 || isErr))
-            {
-                j--;
-            }
-
-            i++;
-            while (input[i] == ' ' || input[i] == '\t')
-            {
-                i++;
-            }
-
-            char filename[MAX_CMD_LEN];
-            int k = 0;
-            while (input[i] != '\0' && input[i] != ' ' && input[i] != '\t')
-            {
-                filename[k++] = input[i++];
-            }
-
-            filename[k] = '\0';
-            if (isErr)
-            {
-                *errFile = strdup(filename);
-            }
-            else
-            {
-                *outFile = strdup(filename);
-            }
 
             continue;
         }
@@ -199,7 +171,8 @@ int main(void)
 {
     char command[MAX_CMD_LEN];
     char *args[MAX_ARGS];
-    char *outFile, *errFile;
+    char *outFile;
+    int append;
     while (1)
     {
         printf("¥ ");
@@ -213,7 +186,7 @@ int main(void)
         command[strcspn(command, "\n")] = '\0';
         int i = 0;
         args[i] = NULL;
-        parseCommand(command, args, &outFile, &errFile);
+        parseCommand(command, args, &outFile, &append);
         if (args[0] == NULL)
         {
             continue;
@@ -358,7 +331,8 @@ int main(void)
         {
             if (outFile)
             {
-                int fdOut = open(outFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                int flags = O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC);
+                int fdOut = open(outFile, flags, 0644);
                 if (fdOut == -1)
                 {
                     perror(outFile);
@@ -367,19 +341,6 @@ int main(void)
 
                 dup2(fdOut, STDOUT_FILENO);
                 close(fdOut);
-            }
-
-            if (errFile)
-            {
-                int fdErr = open(errFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                if (fdErr == -1)
-                {
-                    perror(errFile);
-                    exit(1);
-                }
-
-                dup2(fdErr, STDERR_FILENO);
-                close(fdErr);
             }
 
             execvp(path, args);
@@ -392,11 +353,6 @@ int main(void)
             if (outFile)
             {
                 free(outFile);
-            }
-
-            if (errFile)
-            {
-                free(errFile);
             }
         }
         else
