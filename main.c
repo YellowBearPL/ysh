@@ -127,12 +127,6 @@ int main(void)
                 continue;
             }
 
-            if (args[1][0] != '/')
-            {
-                fprintf(stderr, "cd: only absolute paths are supported in this stage\n");
-                continue;
-            }
-
             if (chdir(args[1]) != 0)
             {
                 perror("cd");
