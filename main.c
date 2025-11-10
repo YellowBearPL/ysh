@@ -6,7 +6,7 @@
 
 int isBuiltin(const char *cmd)
 {
-    const char *builtins[] = {"exit", "echo", "type", "pwd", NULL};
+    const char *builtins[] = {"exit", "echo", "type", "pwd", "cd",NULL};
     for (int i = 0; builtins[i] != NULL; i++)
     {
         if (strcmp(cmd, builtins[i]) == 0)
@@ -114,6 +114,28 @@ int main(void)
             else
             {
                 perror("pwd");
+            }
+
+            continue;
+        }
+
+        if (strcmp(args[0], "cd") == 0)
+        {
+            if (args[1] == NULL)
+            {
+                fprintf(stderr, "cd: missing argument\n");
+                continue;
+            }
+
+            if (args[1][0] != '/')
+            {
+                fprintf(stderr, "cd: only absolute paths are supported in this stage\n");
+                continue;
+            }
+
+            if (chdir(args[1]) != 0)
+            {
+                perror("cd");
             }
 
             continue;
