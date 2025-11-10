@@ -213,6 +213,12 @@ int main(void)
         }
 
         add_history(input);
+        if (args[0] == NULL)
+        {
+            free(input);
+            continue;
+        }
+
         if (strcmp(args[0], "exit") == 0)
         {
             int status = 0;
