@@ -4,9 +4,12 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+#define MAX_ARGS 64
+#define MAX_CMD_LEN 1024
+
 int isBuiltin(const char *cmd)
 {
-    const char *builtins[] = {"exit", "echo", "type", "pwd", "cd",NULL};
+    const char *builtins[] = {"exit", "echo", "type", "pwd", "cd", NULL};
     for (int i = 0; builtins[i] != NULL; i++)
     {
         if (strcmp(cmd, builtins[i]) == 0)
@@ -50,10 +53,49 @@ char *findInPath(const char *cmd)
     return NULL;
 }
 
+void parseCommand(const char *input, char *args[])
+{
+    int i = 0, j = 0, inSingleQuote = 0;
+    char *arg = malloc(MAX_CMD_LEN);
+    int argPos = 0;
+    while (input[i] != '\0')
+    {
+        char c = input[i];
+        if (c == '\'')
+        {
+            inSingleQuote = !inSingleQuote;
+        }
+        else if (!inSingleQuote && (c == ' ' || c == '\t'))
+        {
+            if (argPos > 0)
+            {
+                arg[argPos] = '\0';
+                args[j++] = strdup(arg);
+                argPos = 0;
+            }
+        }
+        else
+        {
+            arg[argPos++] = c;
+        }
+
+        i++;
+    }
+
+    if (argPos > 0)
+    {
+        arg[argPos] = '\0';
+        args[j++] = strdup(arg);
+    }
+
+    args[j] = NULL;
+    free(arg);
+}
+
 int main(void)
 {
-    char command[1024];
-    char *args[64];
+    char command[MAX_CMD_LEN];
+    char *args[MAX_ARGS];
     while (1)
     {
         printf("¥ ");
@@ -66,13 +108,8 @@ int main(void)
 
         command[strcspn(command, "\n")] = '\0';
         int i = 0;
-        args[i] = strtok(command, " ");
-        while (args[i] != NULL && i < 63)
-        {
-            args[++i] = strtok(NULL, " ");
-        }
-
         args[i] = NULL;
+        parseCommand(command, args);
         if (args[0] == NULL)
         {
             continue;
@@ -91,10 +128,10 @@ int main(void)
 
         if (strcmp(args[0], "echo") == 0)
         {
-            for (int j = 1; args[j] != NULL; j++)
+            for (int k = 1; args[k] != NULL; k++)
             {
-                printf("%s", args[j]);
-                if (args[j + 1] != NULL)
+                printf("%s", args[k]);
+                if (args[k + 1] != NULL)
                 {
                     printf(" ");
                 }
