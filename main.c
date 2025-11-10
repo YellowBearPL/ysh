@@ -4,13 +4,11 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #define MAX_ARGS 64
 #define MAX_CMD_LEN 1024
-#define MAX_HISTORY 1000
-
-char *history[MAX_HISTORY];
-int historyCount = 0;
 
 int isBuiltin(const char *cmd)
 {
@@ -188,45 +186,17 @@ void parseCommand(const char *input, char *args[], char **outFile, int *outAppen
     free(arg);
 }
 
-void addToHistory(const char *cmd)
-{
-    if (historyCount < MAX_HISTORY)
-    {
-        history[historyCount++] = strdup(cmd);
-    }
-    else
-    {
-        free(history[0]);
-        memmove(history, history + 1, sizeof(char *) * (MAX_HISTORY - 1));
-        history[MAX_HISTORY - 1] = strdup(cmd);
-    }
-}
-
-void printHistory(int limit)
-{
-    int start = 0;
-    if (limit > 0 && limit < historyCount)
-    {
-        start = historyCount - limit;
-    }
-
-    for (int i = start; i < historyCount; i++)
-    {
-        printf("%d %s\n", i + 1, history[i]);
-    }
-}
-
 int main(void)
 {
-    char input[MAX_CMD_LEN];
+    char *input;
     char *args[MAX_ARGS];
     char *outFile, *errFile;
     int outAppend, errAppend;
     while (1)
     {
-        printf("¥ ");
         fflush(stdout);
-        if (fgets(input, sizeof(input), stdin) == NULL)
+        input = readline("¥ ");
+        if (input == NULL)
         {
             printf("\n");
             break;
@@ -238,12 +208,14 @@ int main(void)
         parseCommand(input, args, &outFile, &outAppend, &errFile, &errAppend);
         if (strlen(input) == 0)
         {
+            free(input);
             continue;
         }
 
-        addToHistory(input);
+        add_history(input);
         if (args[0] == NULL)
         {
+            free(input);
             continue;
         }
 
@@ -255,18 +227,22 @@ int main(void)
                 status = (int)strtol(args[1], NULL, 0);
             }
 
+            free(input);
             exit(status);
         }
 
         if (strcmp(args[0], "history") == 0)
         {
-            int limit = 0;
-            if (args[1])
+            HIST_ENTRY **theList = history_list();
+            if (theList)
             {
-                limit = (int)strtol(args[1], NULL, 0);
+                for (int j = 0; theList[j]; j++)
+                {
+                    printf("%d %s\n", j + 1, theList[j]->line);
+                }
             }
 
-            printHistory(limit);
+            free(input);
             continue;
         }
 
@@ -445,11 +421,8 @@ int main(void)
         {
             perror("fork failed");
         }
-    }
 
-    for (int i = 0; i < historyCount; i++)
-    {
-        free(history[i]);
+        free(input);
     }
 
     return 0;

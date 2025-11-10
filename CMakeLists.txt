@@ -4,3 +4,5 @@ project(ysh C)
 set(CMAKE_C_STANDARD 23)
 
 add_executable(ysh main.c)
+
+target_link_libraries(ysh readline)
