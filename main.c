@@ -121,13 +121,31 @@ int main(void)
 
         if (strcmp(args[0], "cd") == 0)
         {
-            if (args[1] == NULL)
+            char *target = args[1];
+            if (target == NULL || strcmp(target, "~") == 0)
             {
-                fprintf(stderr, "cd: missing argument\n");
-                continue;
+                target = getenv("HOME");
+                if (target == NULL)
+                {
+                    fprintf(stderr, "cd: HOME not set\n");
+                    continue;
+                }
+            }
+            else if (target[0] == '~')
+            {
+                char *home = getenv("HOME");
+                if (home == NULL)
+                {
+                    fprintf(stderr, "cd: HOME not set\n");
+                    continue;
+                }
+
+                static char expanded[1024];
+                snprintf(expanded, sizeof(expanded), "%s%s", home, target + 1);
+                target = expanded;
             }
 
-            if (chdir(args[1]) != 0)
+            if (chdir(target) != 0)
             {
                 perror("cd");
             }
