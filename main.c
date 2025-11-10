@@ -55,17 +55,22 @@ char *findInPath(const char *cmd)
 
 void parseCommand(const char *input, char *args[])
 {
-    int i = 0, j = 0, inSingleQuote = 0;
+    int i = 0, j = 0;
+    int inSingle = 0, inDouble = 0;
     char *arg = malloc(MAX_CMD_LEN);
     int argPos = 0;
     while (input[i] != '\0')
     {
         char c = input[i];
-        if (c == '\'')
+        if (c == '\'' && !inDouble)
         {
-            inSingleQuote = !inSingleQuote;
+            inSingle = !inSingle;
         }
-        else if (!inSingleQuote && (c == ' ' || c == '\t'))
+        else if (c == '"' && !inSingle)
+        {
+            inDouble = !inDouble;
+        }
+        else if (!inSingle && !inDouble  && (c == ' ' || c == '\t'))
         {
             if (argPos > 0)
             {
