@@ -54,14 +54,16 @@ char *findInPath(const char *cmd)
     return NULL;
 }
 
-void parseCommand(const char *input, char *args[], char **outFile, int *append)
+void parseCommand(const char *input, char *args[], char **outFile, int *outAppend, char **errFile, int *errAppend)
 {
     int i = 0, j = 0;
     int inSingle = 0, inDouble = 0;
     char *arg = malloc(MAX_CMD_LEN);
     int argPos = 0;
     *outFile = NULL;
-    *append = 0;
+    *errFile = NULL;
+    *outAppend = 0;
+    *errAppend = 0;
     while (input[i] != '\0')
     {
         char c = input[i];
@@ -115,20 +117,35 @@ void parseCommand(const char *input, char *args[], char **outFile, int *append)
                 argPos = 0;
             }
 
-            int isErr = strcmp(args[j - 1], "2") == 0;
-            if (j > 0 && (strcmp(args[j - 1], "1") == 0 || isErr))
+            int isErr;
+            if (j > 0 && (strcmp(args[j - 1], "1") == 0 || (isErr = strcmp(args[j - 1], "2") == 0)))
             {
                 j--;
             }
 
             if (input[i + 1] == '>')
             {
-                *append = 1;
+                if (isErr)
+                {
+                    *errAppend = 1;
+                }
+                else
+                {
+                    *outAppend = 1;
+                }
+
                 i++;
             }
             else
             {
-                *append = 0;
+                if (isErr)
+                {
+                    *errAppend = 0;
+                }
+                else
+                {
+                    *outAppend = 0;
+                }
             }
 
             i++;
@@ -171,8 +188,8 @@ int main(void)
 {
     char command[MAX_CMD_LEN];
     char *args[MAX_ARGS];
-    char *outFile;
-    int append;
+    char *outFile, *errFile;
+    int outAppend, errAppend;
     while (1)
     {
         printf("¥ ");
@@ -186,7 +203,7 @@ int main(void)
         command[strcspn(command, "\n")] = '\0';
         int i = 0;
         args[i] = NULL;
-        parseCommand(command, args, &outFile, &append);
+        parseCommand(command, args, &outFile, &outAppend, &errFile, &errAppend);
         if (args[0] == NULL)
         {
             continue;
@@ -331,7 +348,7 @@ int main(void)
         {
             if (outFile)
             {
-                int flags = O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC);
+                int flags = O_WRONLY | O_CREAT | (outAppend ? O_APPEND : O_TRUNC);
                 int fdOut = open(outFile, flags, 0644);
                 if (fdOut == -1)
                 {
@@ -341,6 +358,20 @@ int main(void)
 
                 dup2(fdOut, STDOUT_FILENO);
                 close(fdOut);
+            }
+
+            if (errFile)
+            {
+                int flags = O_WRONLY | O_CREAT | (errAppend ? O_APPEND : O_TRUNC);
+                int fdErr = open(errFile, flags, 0644);
+                if (fdErr == -1)
+                {
+                    perror(errFile);
+                    exit(1);
+                }
+
+                dup2(fdErr, STDERR_FILENO);
+                close(fdErr);
             }
 
             execvp(path, args);
@@ -353,6 +384,11 @@ int main(void)
             if (outFile)
             {
                 free(outFile);
+            }
+
+            if (errFile)
+            {
+                free(errFile);
             }
         }
         else
