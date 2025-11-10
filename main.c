@@ -62,7 +62,11 @@ void parseCommand(const char *input, char *args[])
     while (input[i] != '\0')
     {
         char c = input[i];
-        if (c == '\'' && !inDouble)
+        if (c == '\\' && !inSingle && input[i + 1] != '\0')
+        {
+            arg[argPos++] = input[++i];
+        }
+        else if (c == '\'' && !inDouble)
         {
             inSingle = !inSingle;
         }
@@ -70,7 +74,7 @@ void parseCommand(const char *input, char *args[])
         {
             inDouble = !inDouble;
         }
-        else if (!inSingle && !inDouble  && (c == ' ' || c == '\t'))
+        else if (!inSingle && !inDouble && (c == ' ' || c == '\t'))
         {
             if (argPos > 0)
             {
