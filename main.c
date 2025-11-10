@@ -6,7 +6,7 @@
 
 int isBuiltin(const char *cmd)
 {
-    const char *builtins[] = {"exit", "echo", "type", NULL};
+    const char *builtins[] = {"exit", "echo", "type", "pwd", NULL};
     for (int i = 0; builtins[i] != NULL; i++)
     {
         if (strcmp(cmd, builtins[i]) == 0)
@@ -101,6 +101,21 @@ int main(void)
             }
 
             printf("\n");
+            continue;
+        }
+
+        if (strcmp(args[0], "pwd") == 0)
+        {
+            char cwd[1024];
+            if (getcwd(cwd, sizeof(cwd)) != NULL)
+            {
+                printf("%s\n", cwd);
+            }
+            else
+            {
+                perror("pwd");
+            }
+
             continue;
         }
 
