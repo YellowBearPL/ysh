@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #define MAX_ARGS 64
 #define MAX_CMD_LEN 1024
@@ -53,12 +54,13 @@ char *findInPath(const char *cmd)
     return NULL;
 }
 
-void parseCommand(const char *input, char *args[])
+void parseCommand(const char *input, char *args[], char **outfile)
 {
     int i = 0, j = 0;
     int inSingle = 0, inDouble = 0;
     char *arg = malloc(MAX_CMD_LEN);
     int argPos = 0;
+    *outfile = NULL;
     while (input[i] != '\0')
     {
         char c = input[i];
@@ -103,6 +105,37 @@ void parseCommand(const char *input, char *args[])
                 argPos = 0;
             }
         }
+        else if (!inSingle && !inDouble && c == '>')
+        {
+            if (argPos > 0)
+            {
+                arg[argPos] = '\0';
+                args[j++] = strdup(arg);
+                argPos = 0;
+            }
+
+            if (j > 0 && strcmp(args[j - 1], "1") == 0)
+            {
+                j--;
+            }
+
+            i++;
+            while (input[i] == ' ' || input[i] == '\t')
+            {
+                i++;
+            }
+
+            char filename[MAX_CMD_LEN];
+            int k = 0;
+            while (input[i] != '\0' && input[i] != ' ' && input[i] != '\t')
+            {
+                filename[k++] = input[i++];
+            }
+
+            filename[k] = '\0';
+            *outfile = strdup(filename);
+            continue;
+        }
         else
         {
             arg[argPos++] = c;
@@ -125,6 +158,7 @@ int main(void)
 {
     char command[MAX_CMD_LEN];
     char *args[MAX_ARGS];
+    char *outfile;
     while (1)
     {
         printf("¥ ");
@@ -138,7 +172,7 @@ int main(void)
         command[strcspn(command, "\n")] = '\0';
         int i = 0;
         args[i] = NULL;
-        parseCommand(command, args);
+        parseCommand(command, args, &outfile);
         if (args[0] == NULL)
         {
             continue;
@@ -157,16 +191,40 @@ int main(void)
 
         if (strcmp(args[0], "echo") == 0)
         {
-            for (int k = 1; args[k] != NULL; k++)
+            int savedStdout = -1;
+            int fd;
+            if (outfile) {
+                fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (fd == -1)
+                {
+                    perror(outfile);
+                    continue;
+                }
+
+                savedStdout = dup(STDOUT_FILENO);
+                dup2(fd, STDOUT_FILENO);
+                close(fd);
+            }
+
+            for (int k = 1; args[k]; k++)
             {
                 printf("%s", args[k]);
-                if (args[k + 1] != NULL)
+                if (args[k + 1])
                 {
                     printf(" ");
                 }
             }
 
             printf("\n");
+            if (outfile)
+            {
+                fflush(stdout);
+                dup2(savedStdout, STDOUT_FILENO);
+                close(savedStdout);
+                free(outfile);
+                outfile = NULL;
+            }
+
             continue;
         }
 
@@ -257,6 +315,19 @@ int main(void)
         pid_t pid = fork();
         if (pid == 0)
         {
+            if (outfile)
+            {
+                int fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (fd == -1)
+                {
+                    perror(outfile);
+                    exit(1);
+                }
+
+                dup2(fd, STDOUT_FILENO);
+                close(fd);
+            }
+
             execvp(path, args);
             perror("exec failed");
             exit(1);
@@ -264,6 +335,10 @@ int main(void)
         else if (pid > 0)
         {
             wait(NULL);
+            if (outfile)
+            {
+                free(outfile);
+            }
         }
         else
         {
