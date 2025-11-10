@@ -188,21 +188,21 @@ void parseCommand(const char *input, char *args[], char **outFile, int *outAppen
     free(arg);
 }
 
-void addToHistory(const char *command)
+void addToHistory(const char *cmd)
 {
     if (historyCount < MAX_HISTORY)
     {
-        history[historyCount++] = strdup(command);
+        history[historyCount++] = strdup(cmd);
     }
     else
     {
         free(history[0]);
         memmove(history, history + 1, sizeof(char *) * (MAX_HISTORY - 1));
-        history[MAX_HISTORY - 1] = strdup(command);
+        history[MAX_HISTORY - 1] = strdup(cmd);
     }
 }
 
-void showHistory()
+void printHistory()
 {
     for (int i = 0; i < historyCount; i++)
     {
@@ -212,7 +212,7 @@ void showHistory()
 
 int main(void)
 {
-    char command[MAX_CMD_LEN];
+    char input[MAX_CMD_LEN];
     char *args[MAX_ARGS];
     char *outFile, *errFile;
     int outAppend, errAppend;
@@ -220,22 +220,22 @@ int main(void)
     {
         printf("¥ ");
         fflush(stdout);
-        if (fgets(command, sizeof(command), stdin) == NULL)
+        if (fgets(input, sizeof(input), stdin) == NULL)
         {
             printf("\n");
             break;
         }
 
-        command[strcspn(command, "\n")] = '\0';
+        input[strcspn(input, "\n")] = '\0';
         int i = 0;
         args[i] = NULL;
-        parseCommand(command, args, &outFile, &outAppend, &errFile, &errAppend);
-        if (strlen(command) == 0)
+        parseCommand(input, args, &outFile, &outAppend, &errFile, &errAppend);
+        if (strlen(input) == 0)
         {
             continue;
         }
-        addToHistory(command);
 
+        addToHistory(input);
         if (args[0] == NULL)
         {
             continue;
@@ -254,7 +254,7 @@ int main(void)
 
         if (strcmp(args[0], "history") == 0)
         {
-            showHistory();
+            printHistory();
             continue;
         }
 
