@@ -5,6 +5,8 @@ ysh (pronounced "wish") is a shell built from scratch in C.
   - exit
   - echo
   - type
+  - pwd
+  - cd
 - Input parsing with argument tokenization
 - Simple prompt (¥)
 - Error handling for invalid commands and arguments
